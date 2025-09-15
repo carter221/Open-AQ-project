@@ -16,17 +16,11 @@ if os.path.exists('.env'):
 
 # Vérifier la clé API - GitHub Actions l'aura via les secrets
 api_key = os.getenv('OPENAQ_API_KEY')
-if not api_key:
-    pytest.skip("OPENAQ_API_KEY not found in environment variables", allow_module_level=True)
+if not api_key or api_key.strip() == "":
+    pytest.skip("OPENAQ_API_KEY not found or empty in environment variables", allow_module_level=True)
 
+# Maintenant on peut importer le module
 import api_extract
-
-if not api_key:
-    raise Exception("OPENAQ_API_KEY not found in environment variables")
-
-client = OpenAQ(api_key=api_key)
-if not client:
-    raise Exception("Verifiez votre clef API")
 
 def test_fetch_locations():
     locations = api_extract.fetch_locations(limit=10, page=1)
@@ -41,6 +35,11 @@ def test_fetch_instruments():
     assert len(instruments) > 0, "Doit recuperer au moins un instrument"
 
 def test_main_function(capsys):
+    # Nettoyer les fichiers existants avant le test
+    for file in ['locations.json', 'instruments.json']:
+        if os.path.exists(file):
+            os.remove(file)
+    
     api_extract.main()
     captured = capsys.readouterr()
     assert "Début de l'extraction des données de l'API OpenAQ" in captured.out
@@ -58,6 +57,11 @@ def test_main_function(capsys):
         assert os.path.getsize('instruments.json') > 0
     else:
         assert error_message or error_final_message, "Ni fichiers créés ni message d'erreur affiché"
+    
+    # Nettoyer après le test
+    for file in ['locations.json', 'instruments.json']:
+        if os.path.exists(file):
+            os.remove(file)
 
 if __name__ == "__main__":
     pytest.main([__file__])

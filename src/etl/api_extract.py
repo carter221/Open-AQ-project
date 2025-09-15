@@ -6,7 +6,9 @@ from openaq import OpenAQ
 from datetime import datetime, timedelta
 from time import sleep
 
-dotenv.load_dotenv()
+# Charger .env seulement s'il existe (pas en CI)
+if os.path.exists('.env'):
+    dotenv.load_dotenv()
 
 api_key = os.getenv('OPENAQ_API_KEY')
 client = None
@@ -22,6 +24,7 @@ def get_client():
 
 def fetch_locations(limit=300, page=2):
     try:
+        client = get_client()  # Utiliser get_client() au lieu de client global
         response = client.locations.list(limit=limit, page=page)
         return response.results if hasattr(response, 'results') else response
     except Exception as e:
@@ -30,11 +33,24 @@ def fetch_locations(limit=300, page=2):
 
 def fetch_instruments():
     try:
+        client = get_client()  # Utiliser get_client() au lieu de client global
         response = client.instruments.list()
         return response.results if hasattr(response, 'results') else response
     except Exception as e:
         print(f"Error fetching instruments: {e}")
         return []
+
+def convert_to_serializable(obj_list):
+    """Convertit une liste d'objets en dictionnaires sérialisables"""
+    serializable_data = []
+    for obj in obj_list:
+        if hasattr(obj, '__dict__'):
+            serializable_data.append(obj.__dict__)
+        elif hasattr(obj, 'to_dict'):
+            serializable_data.append(obj.to_dict())
+        else:
+            serializable_data.append(str(obj))
+    return serializable_data
 
 def main():
     print("Début de l'extraction des données de l'API OpenAQ")
@@ -51,24 +67,10 @@ def main():
             return
         else:
             print("Début de l'écriture des fichiers JSON")
-            # Convertir les objets en dictionnaires
-            locations_data = []
-            for location in locations:
-                if hasattr(location, '__dict__'):
-                    locations_data.append(location.__dict__)
-                elif hasattr(location, 'to_dict'):
-                    locations_data.append(location.to_dict())
-                else:
-                    locations_data.append(str(location))
             
-            instruments_data = []
-            for instrument in instruments:
-                if hasattr(instrument, '__dict__'):
-                    instruments_data.append(instrument.__dict__)
-                elif hasattr(instrument, 'to_dict'):
-                    instruments_data.append(instrument.to_dict())
-                else:
-                    instruments_data.append(str(instrument))
+            # Utiliser la fonction convert_to_serializable
+            locations_data = convert_to_serializable(locations)
+            instruments_data = convert_to_serializable(instruments)
             
             with open('locations.json', 'w') as loc_file:
                 json.dump(locations_data, loc_file, indent=4, default=str)
@@ -81,7 +83,9 @@ def main():
         print(f"Une erreur s'est produite: {e}")
     finally:
         sleep(1)
-        client.close()
+        # Vérifier que client existe avant de le fermer
+        if client and hasattr(client, 'close'):
+            client.close()
 
 if __name__ == "__main__":
     main()
