@@ -9,10 +9,18 @@ from time import sleep
 
 # Ajouter le chemin vers le module src
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'etl'))
+
+# Charger .env seulement s'il existe (localement)
+if os.path.exists('.env'):
+    dotenv.load_dotenv()
+
+# Vérifier la clé API - GitHub Actions l'aura via les secrets
+api_key = os.getenv('OPENAQ_API_KEY')
+if not api_key:
+    pytest.skip("OPENAQ_API_KEY not found in environment variables", allow_module_level=True)
+
 import api_extract
 
-dotenv.load_dotenv()
-api_key = os.getenv('OPENAQ_API_KEY')
 if not api_key:
     raise Exception("OPENAQ_API_KEY not found in environment variables")
 

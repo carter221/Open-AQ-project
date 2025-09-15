@@ -9,13 +9,16 @@ from time import sleep
 dotenv.load_dotenv()
 
 api_key = os.getenv('OPENAQ_API_KEY')
-if not api_key:
-    raise Exception("OPENAQ_API_KEY not found in environment variables")
+client = None
 
-client = OpenAQ(api_key=api_key)
-
-if not client:
-    raise Exception("Failed to initialize OpenAQ client. Check your API key.")
+def get_client():
+    """Initialise le client OpenAQ si pas déjà fait"""
+    global client
+    if client is None:
+        if not api_key:
+            raise Exception("OPENAQ_API_KEY not found in environment variables")
+        client = OpenAQ(api_key=api_key)
+    return client
 
 def fetch_locations(limit=300, page=2):
     try:
