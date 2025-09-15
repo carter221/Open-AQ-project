@@ -1,0 +1,4 @@
+requests
+openaq
+pytest
+python-dotenv
